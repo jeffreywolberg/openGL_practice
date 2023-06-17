@@ -21,9 +21,9 @@ GLuint vao[numVAOs];
 GLuint vbo[numVBOs];
 // allocate variables used in display() function, so that they won’t need to be
 // allocated during rendering
-GLuint mvLoc, projLoc, widthLoc, heightLoc;
+GLuint vLoc, projLoc, widthLoc, heightLoc, tfLoc;
 int width, height;
-float aspect;
+float aspect, timeFactor;
 glm::mat4 pMat, rMat, tMat, vMat, mMat, mvMat;
 void setupVertices(
     void) { // 36 vertices, 12 triangles, makes 2x2x2 cube placed at origin
@@ -59,7 +59,7 @@ void init(GLFWwindow *window) {
       Utils::createShaderProgram("vertShader.glsl", "fragShader.glsl");
   cameraX = 0.0f;
   cameraY = 0.0f;
-  cameraZ = 8.0f;
+  cameraZ = 40.0f;
   cubeLocX = 0.0f;
   // shift down Y to reveal perspective
   cubeLocY = -2.0f;
@@ -74,10 +74,11 @@ void display(GLFWwindow *window, double currentTime) {
   glUseProgram(renderingProgram); // installs glsl code on the GPU
 
   // get the uniform variables for the MV and projection matrices
-  mvLoc = glGetUniformLocation(renderingProgram, "mv_matrix");
+  vLoc = glGetUniformLocation(renderingProgram, "v_matrix");
   projLoc = glGetUniformLocation(renderingProgram, "proj_matrix");
-  widthLoc = glGetUniformLocation(renderingProgram, "windowWidth");
-  heightLoc = glGetUniformLocation(renderingProgram, "windowHeight");
+  tfLoc = glGetUniformLocation(renderingProgram, "tf");
+  // widthLoc = glGetUniformLocation(renderingProgram, "windowWidth");
+  // heightLoc = glGetUniformLocation(renderingProgram, "windowHeight");
   // build perspective matrix
   glfwGetFramebufferSize(window, &width, &height);
   aspect = (float)width / (float)height;
@@ -88,34 +89,42 @@ void display(GLFWwindow *window, double currentTime) {
       glm::translate(glm::mat4(1.0f), glm::vec3(-cameraX, -cameraY, -cameraZ));
   // mMat = glm::translate(glm::mat4(1.0f), glm::vec3(cubeLocX, cubeLocY,
   // cubeLocZ));
-  tMat = glm::translate(glm::mat4(1.0f),
-                        glm::vec3(sin(0.35f * currentTime) * 2.0f,
-                                  cos(0.52f * currentTime) * 2.0f,
-                                  sin(0.7f * currentTime) * 2.0f));
-  rMat = glm::rotate(glm::mat4(1.0f), 1.75f * (float)currentTime,
-                     glm::vec3(0.0f, 1.0f, 0.0f)); // 3rd arg is axis
-  rMat = glm::rotate(rMat, 1.75f * (float)currentTime,
-                     glm::vec3(1.0f, 0.0f, 0.0f));
-  rMat = glm::rotate(rMat, 1.75f * (float)currentTime,
-                     glm::vec3(0.0f, 0.0f, 1.0f));
-  mMat = tMat * rMat; // rot then trans
-//   mMat = rMat * tMat; // trans then rot
-  mvMat = vMat * mMat;
-  // copy perspective and MV matrices to corresponding uniform variables
-  glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(mvMat));
+  // for (int i = 0; i < 24; i++) {
+  //   tf = currentTime + i;
+  //   tMat = glm::translate(glm::mat4(1.0f),
+  //                         glm::vec3(sin(0.35f * tf) * 8.0f,
+  //                                   cos(0.52f * tf) * 8.0f,
+  //                                   sin(0.7f * tf) *  8.0f));
+  //   rMat = glm::rotate(glm::mat4(1.0f), 1.75f * (float)tf,
+  //                      glm::vec3(0.0f, 1.0f, 0.0f)); // 3rd arg is axis
+  //   rMat = glm::rotate(rMat, 1.75f * (float)tf,
+  //                      glm::vec3(1.0f, 0.0f, 0.0f));
+  //   rMat = glm::rotate(rMat, 1.75f * (float)tf,
+  //                      glm::vec3(0.0f, 0.0f, 1.0f));
+  //   mMat = tMat * rMat; // rot then trans
+  //                       //   mMat = rMat * tMat; // trans then rot
+  //   mvMat = vMat * mMat;
+  //   // copy perspective and MV matrices to corresponding uniform variables
+  //   glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(mvMat));
   glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(pMat));
-  glUniform1i(widthLoc, width);
-  glUniform1i(heightLoc, height);
+  //   glUniform1i(widthLoc, width);
+  //   glUniform1i(heightLoc, height);
   // associate VBO with the corresponding vertex attribute in the vertex shader
+  glUniformMatrix4fv(vLoc, 1, GL_FALSE, glm::value_ptr(vMat));
+  timeFactor = ((float)currentTime);
+  tfLoc = glGetUniformLocation(renderingProgram, "tf");
+  glUniform1f(tfLoc, (float)timeFactor);
+
   glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-  // the first arg in two funcs below is given by 'layout(location = #)' in the
-  // vertShader
+  // the first arg in two funcs below is given by 'layout(location = #)' in
+  // the vertShader
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(0);
   // adjust OpenGL settings and draw model
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
-  glDrawArrays(GL_TRIANGLES, 0, 36);
+  glDrawArraysInstanced(GL_TRIANGLES, 0, 36, 1000);
+  // }
 }
 
 int main(void) {
