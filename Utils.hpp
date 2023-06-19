@@ -20,6 +20,7 @@ public:
     static bool checkOpenGLError();
     static string readShaderSource(const char *filePath);
     static GLuint createShaderProgram(const char *vsource, const char *fsource);
+    static GLuint loadTexture(const char *texImagePath);
 };
 
 #endif
